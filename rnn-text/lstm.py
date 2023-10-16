@@ -6,6 +6,7 @@ import numpy as np
 def split_sequence(sequence, n_steps):
     X, y = list(), list()
     for i in range(len(sequence)):
+        print(len(sequence))
         # find the end of this pattern
         end_ix = i + n_steps
         # check if we are beyond the sequence
