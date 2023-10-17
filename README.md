@@ -10,5 +10,14 @@
 ### rnn-text/lstm-passangers.py    
 
 - Results :
-- Blue is actual data, green is predicted data.
-![img_2.png](img_2.png)
+- Blue is actual data, red is our training set, green is the test set.
+![img_2.png](img_2.png)   
+
+### lstm-nlp/imdb-reviews.py    
+ - LSTM model that predicts if a review is positive or negative.
+ - Trained on the infamous IMDB dataset.
+ - Best Results :
+ - ```
+    Test loss: 0.279
+    Test accuracy: 88.455%
+   ```
