@@ -1,15 +1,8 @@
-import os
-
-import matplotlib.pyplot as plt
-import pandas as pd
 import torch
 from torch.nn import functional as F
 from torch.utils.data import TensorDataset, DataLoader
 import torch.nn as nn
-import numpy as np
-import torch.optim as optim
 import torch.utils.data as data
-import re
 from collections import Counter
 
 with open('./transformers/input.txt', 'r', encoding='utf-8') as f:
@@ -18,14 +11,18 @@ with open('./transformers/input.txt', 'r', encoding='utf-8') as f:
 chars = sorted(list(set(text)))
 # ----------------------------
 vocab_size = len(chars)
-batch_size = 4
-block_size = 8
+batch_size = 64
+block_size =256
 max_iters = 5000
 eval_interval = 500
-learning_rage = 1e-3
+n_layer = 6
+n_head = 6
+# Dropout added since model started overfitting
+dropout = 0.2
+learning_rage = 3e-4
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 eval_iters = 200
-n_embed = 32
+n_embed = 384
 # ----------------------------
 # Simple tokenizer without subword encoding
 stoi = {ch: i for i, ch in enumerate(chars)}
@@ -78,6 +75,7 @@ class Head(nn.Module):
         self.query = nn.Linear(n_embed, head_size,bias=False)
         self.value = nn.Linear(n_embed, head_size,bias=False)
         self.register_buffer('tril', torch.tril(torch.ones((block_size, block_size))))
+        self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
         B,T,C = x.shape
@@ -86,6 +84,7 @@ class Head(nn.Module):
         wei = q @ k.transpose(-2,-1) *C**-0.5  # B,T,C @ B,C,T -> B,T,T
         wei = wei.masked_fill(self.tril[:T,:T]==0, float('-inf'))
         wei = F.softmax(wei, dim=-1) # B,T,T
+        wei = self.dropout(wei)
         v = self.value(x) # B,T,C
         out = wei @ v # B,T,T @ B,T,C -> B,T,C
 
@@ -98,10 +97,11 @@ class MultiHeadAttention(nn.Module):
         super().__init__()
         self.heads = nn.ModuleList([Head(head_size) for _ in range(num_heads)])
         self.proj = nn.Linear(n_embed, n_embed)
+        self.dropout = nn.Dropout(dropout)
 
     def forward(self,x):
         out = torch.cat([h(x) for h in self.heads], dim=-1) # B,T,C
-        out = self.proj(out)
+        out = self.dropout(self.proj(out))
         return out
 
 class FeedForward(nn.Module):
@@ -110,7 +110,8 @@ class FeedForward(nn.Module):
         self.net = nn.Sequential(
             nn.Linear(n_embed, 4 * n_embed),
             nn.ReLU(),
-            nn.Linear(4 * n_embed, n_embed)
+            nn.Linear(4 * n_embed, n_embed),
+            nn.Dropout(dropout)
             )
 
     def forward(self, x):
@@ -122,11 +123,13 @@ class Block(nn.Module):
         head_size = n_embed // n_head
         self.sa = MultiHeadAttention(n_head, head_size)
         self.ffwd = FeedForward(n_embed)
+        self.ln1 = nn.LayerNorm(n_embed)
+        self.ln2 = nn.LayerNorm(n_embed)
     
     def forward(self,x):
         # Residual connection
-        x = x + self.sa(x)
-        x = x + self.ffwd(x)
+        x = x + self.sa(self.ln1(x))
+        x = x + self.ffwd(self.ln2(x))
         return x
 
 
@@ -136,11 +139,8 @@ class BigramLanguageModel(nn.Module):
         # each token directly read off the logits of the next token in the sequence
         self.token_embedding_table = nn.Embedding(vocab_size, n_embed)
         self.position_embedding_table = nn.Embedding(block_size, n_embed)
-        self.blocks = nn.Sequential(
-            Block(n_embed, 4),
-            Block(n_embed, 4),
-            Block(n_embed, 4),
-        )
+        self.blocks = nn.Sequential(*[Block(n_embed, n_head=n_head) for _ in range(n_layer)])
+        self.ln_f = nn.LayerNorm(n_embed) # final layer norm
         # self.sa_heads = MultiHeadAttention(4, n_embed//4) # 4 heads, 8/4=2
         # self.ffwd = FeedForward(n_embed)
         self.lm_head = nn.Linear(n_embed, vocab_size)
@@ -152,6 +152,7 @@ class BigramLanguageModel(nn.Module):
         x = tok_emb + pos_emb  # BTC + T,C -> BTC
         # x = self.sa_heads(x)
         x = self.blocks(x) # BTC 
+        x = self.ln_f(x) # BTC
         logits = self.lm_head(x)
 
         if targets is None:
