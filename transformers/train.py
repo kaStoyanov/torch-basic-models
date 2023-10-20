@@ -13,7 +13,7 @@ chars = sorted(list(set(text)))
 vocab_size = len(chars)
 batch_size = 64
 block_size =256
-max_iters = 5000
+max_iters = 10000
 eval_interval = 500
 n_layer = 6
 n_head = 6
@@ -196,7 +196,7 @@ for iter in range(max_iters):
     optimizer.step()
 
 context = torch.zeros((1,1), dtype=torch.long,device=device)
-g = decode(m.generate(context, 500)[0].tolist())
+g = decode(m.generate(context, 1000)[0].tolist())
 print(g)
 
 
