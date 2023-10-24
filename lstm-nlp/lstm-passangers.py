@@ -15,10 +15,9 @@ timeseries = df[["Passengers"]].values.astype('float32')
 
 
 # train-test split for time series
-train_size = int(len(timeseries) * 0.67)
+train_size = int(len(timeseries) * 0.7)
 test_size = len(timeseries) - train_size
 train, test = timeseries[:train_size], timeseries[train_size:]
-
 
 def create_dataset(dataset, lookback):
     """Transform a time series into a prediction dataset
@@ -36,12 +35,12 @@ def create_dataset(dataset, lookback):
 
 
 # Play around with lookback hyperparam to see how it affects the model
-lookback = 4
+lookback = 6
 X_train, y_train = create_dataset(train, lookback=lookback)
 X_test, y_test = create_dataset(test, lookback=lookback)
 
 
-class AirModel(nn.Module):
+class PassangerModel(nn.Module):
     def __init__(self):
         super().__init__()
         self.lstm = nn.LSTM(input_size=1, hidden_size=50, num_layers=1, batch_first=True)
@@ -55,12 +54,12 @@ class AirModel(nn.Module):
         return x
 
 
-model = AirModel()
+model = PassangerModel()
 optimizer = optim.Adam(model.parameters())
 loss_fn = nn.MSELoss()
 loader = data.DataLoader(data.TensorDataset(X_train, y_train), shuffle=True, batch_size=8)
 
-n_epochs = 2000
+n_epochs = 6000
 for epoch in range(n_epochs):
     model.train()
     for X_batch, y_batch in loader:
@@ -70,7 +69,7 @@ for epoch in range(n_epochs):
         loss.backward()
         optimizer.step()
     # Validation
-    if epoch % 100 != 0:
+    if epoch % 500 != 0:
         continue
     model.eval()
     with torch.no_grad():
