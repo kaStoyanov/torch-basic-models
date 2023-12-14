@@ -3,12 +3,12 @@ import numpy as np
 # split a uni-variate sequence into samples
 
 
-def split_sequence(sequence, n_steps):
+def split_sequence(sequence, lookback):
     X, y = list(), list()
     for i in range(len(sequence)):
         print(len(sequence))
         # find the end of this pattern
-        end_ix = i + n_steps
+        end_ix = i + lookback
         # check if we are beyond the sequence
         if end_ix > len(sequence) - 1:
             break
@@ -20,11 +20,14 @@ def split_sequence(sequence, n_steps):
 
 
 # define input sequence
-raw_seq = [10, 20, 30, 40, 50, 60, 70, 80, 90]
+raw_seq = [10, 20, 30, 
+           40, 50, 60,
+           70, 80, 90]
 # choose a number of time steps
-n_steps = 3
+lookback = 5
 # split into samples
-X, y = split_sequence(raw_seq, n_steps)
+X, y = split_sequence(raw_seq, lookback)
 # summarize the data
 for i in range(len(X)):
-    print(X[i], y[i])
+    print(f"Sequence: {X[i]}")
+    print(f"Prediction: {y[i]}")

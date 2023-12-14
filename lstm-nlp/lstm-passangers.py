@@ -15,8 +15,10 @@ timeseries = df[["Passengers"]].values.astype('float32')
 
 
 # train-test split for time series
-train_size = int(len(timeseries) * 0.7)
+train_size = int(len(timeseries) * 0.8)
 test_size = len(timeseries) - train_size
+lookback = 6
+
 train, test = timeseries[:train_size], timeseries[train_size:]
 
 def create_dataset(dataset, lookback):
@@ -35,7 +37,6 @@ def create_dataset(dataset, lookback):
 
 
 # Play around with lookback hyperparam to see how it affects the model
-lookback = 6
 X_train, y_train = create_dataset(train, lookback=lookback)
 X_test, y_test = create_dataset(test, lookback=lookback)
 
@@ -59,7 +60,7 @@ optimizer = optim.Adam(model.parameters())
 loss_fn = nn.MSELoss()
 loader = data.DataLoader(data.TensorDataset(X_train, y_train), shuffle=True, batch_size=8)
 
-n_epochs = 6000
+n_epochs = 3000
 for epoch in range(n_epochs):
     model.train()
     for X_batch, y_batch in loader:
